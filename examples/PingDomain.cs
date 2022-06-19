@@ -9,6 +9,7 @@ class Program
 {
 	static void Main(string[] args) 
 	{
+		//Pass domain as first argument
 		string domain = "www.google.com";
 		if (args.Length > 0)
 			domain = args[0];
