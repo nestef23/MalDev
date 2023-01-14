@@ -53,7 +53,7 @@ app = Flask(__name__)
 # Main page with links to all operator functions
 @app.route("/")
 def hello_world():
-    return '<h3>Simple C2 server built for learning purpposes</h3><b>Operator functionalities:</b><br/><a href="/client/agents">List agents</a><br/><a href="/client/agent?id=XXXX">Agent details</a> (supply agent ID)<br/><a href="/client/command?id=XXXX&command=YYYY">Issue command to agent</a> (supply agent ID and command)<br/><a href="/client/agentnote?id=XXXX&note=YYYY">change agent note</a> (supply agent ID and note)<br/><br/><b>Agent functionalities:</b><br/><a href="/agent/register">Register agent</a>(Supply ID or get a random one)<br/><a href="/agent/heartbeat?heartbeat=eyJpZCI6MTAwMH0=">Check-in with heartbeat</a>(Supply a base64-encoded JSON)<br/><a href="/agent/verify/<string:code>">Verify server</a>(Supply a base64-encoded string eg: ZGNiYQ==)<br/>'
+    return '<h3>Simple C2 server built for learning purpposes</h3><b>Operator functionalities:</b><br/><a href="/client/agents">List agents</a><br/><a href="/client/agent?id=XXXX">Agent details</a> (supply agent ID)<br/><a href="/client/command?id=XXXX&command=YYYY">Issue command to agent</a> (supply agent ID and command)<br/><a href="/client/agentnote?id=XXXX&note=YYYY">change agent note</a> (supply agent ID and note)<br/><br/><b>Agent functionalities:</b><br/><a href="/agent/register">Register agent</a>(Supply ID or get a random one)<br/><a href="/agent/heartbeat?heartbeat=eyJpZCI6MTAwMH0=">Check-in with heartbeat</a>(Supply a base64-encoded JSON)<br/><a href="/agent/getcommand?id=XXXX">Check for new command</a>(supply agent ID)<br/><a href="/agent/verify/<string:code>">Verify server</a>(Supply a base64-encoded string eg: ZGNiYQ==)<br/>'
 
 # Register new agent
 # TODO: check for duplicates of ID
@@ -83,7 +83,7 @@ def heartbeat():
 
     json_heartbeat = json.loads(heartbeat)
     if "id" not in json_heartbeat:
-        return f"Missing agent id. JSON needs to include \"id\": key with agent ID"
+        return f"Missing agent id. JSON needs to include \"id\" key with agent ID"
 
     agent_id = json_heartbeat["id"]
     c.execute("INSERT INTO heartbeats (agent_id, heartbeat_timestamp) VALUES (?,CURRENT_TIMESTAMP)", (agent_id,))
@@ -98,6 +98,20 @@ def heartbeat():
     c.execute("UPDATE commands SET reported_done_timestamp=CURRENT_TIMESTAMP, result=?, done=1 WHERE command_UUID = ?", (result,result_uuid))
     
     return f"Heartbeat and command result registered for agent ID: {agent_id} "
+
+# Heartbeat function for agent to check-in and (optionally) report command results
+@app.route('/agent/getcommand')
+def getcommand():
+    id = request.args.get('id',default = 0, type = int)
+    if (id < 1000 or id > 9999):
+        return f"Invalid agent id. Pass id as GET parameter: ?id=XXXX"
+
+    c.execute("SELECT command_UUID,command FROM commands WHERE agent_id = ? and done = 0 LIMIT 1", (id,))
+
+    row = c.fetchall()
+
+    return f"{row}"
+
 
 # Verify function takes a base64-encoded string, decodes it, reverses an encodes again.
 # The purpose is that client can check that it is still communicating with genuine C2 server.
