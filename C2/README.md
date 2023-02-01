@@ -26,5 +26,5 @@ TODO
 1. Copy **c2_server.py** into some folder
 2. Create virtual env inside this folder - https://flask.palletsprojects.com/en/2.2.x/installation/#virtual-environments
 3. Install Flask - https://flask.palletsprojects.com/en/2.2.x/installation/#install-flask
-4. start the server with `python -m flask --app c2_server run` from this folder
+4. start the server with `python -m flask --app c2_server run --host=0.0.0.0` from this folder
 5. Server will be availbe on `http://127.0.0.1:5000/`
