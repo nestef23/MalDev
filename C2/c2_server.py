@@ -84,9 +84,9 @@ def heartbeat():
     heartbeat = request.args.get('heartbeat',default = '0', type = str)
     if heartbeat == '0':
         return f"Use base64-encoded JSON heartbeat. Pass heartbeat as GET parameter: ?heartbeat=eyJ..."
-    heartbeat_bytes = heartbeat.encode('ascii')
+    heartbeat_bytes = heartbeat.encode('utf-8')
     heartbeat_decoded = base64.b64decode(heartbeat_bytes)
-    heartbeat = heartbeat_decoded.decode('ascii')
+    heartbeat = heartbeat_decoded.decode('utf-8')
 
     json_heartbeat = json.loads(heartbeat)
     if "id" not in json_heartbeat:
@@ -102,6 +102,11 @@ def heartbeat():
 
     result_uuid = json_heartbeat["uuid"]
     result = json_heartbeat["result"]
+
+    result_bytes = result.encode('utf-8')
+    result_decoded = base64.b64decode(result_bytes)
+    result = result_decoded.decode('utf-8')
+
     c.execute("UPDATE commands SET reported_done_timestamp=CURRENT_TIMESTAMP, result=?, done=1 WHERE command_UUID = ?", (result,result_uuid))
     
     return f"Heartbeat and command result registered for agent ID: {agent_id} "
